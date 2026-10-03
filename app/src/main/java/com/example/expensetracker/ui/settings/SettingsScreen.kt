@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -31,10 +33,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.expensetracker.ui.lock.PinPad
+import com.example.expensetracker.ui.util.message
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
 
 @Composable
@@ -52,6 +57,8 @@ fun SettingsScreenRoot(viewModel: SettingsViewModel, onBack: () -> Unit) {
         state = state,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
+        onBudgetInputChange = viewModel::onBudgetInputChange,
+        onBudgetSave = viewModel::onBudgetSave,
         onSetPin = viewModel::onSetPinClicked,
         onChangePin = viewModel::onChangePinClicked,
         onDisablePin = viewModel::onDisablePinClicked,
@@ -71,6 +78,8 @@ fun SettingsScreen(
     state: SettingsUiState,
     snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
+    onBudgetInputChange: (String) -> Unit,
+    onBudgetSave: () -> Unit,
     onSetPin: () -> Unit,
     onChangePin: () -> Unit,
     onDisablePin: () -> Unit,
@@ -102,6 +111,10 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            SectionTitle("Бюджет")
+            BudgetSection(state.budgetInput, state.budgetError, onBudgetInputChange, onBudgetSave)
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
             SectionTitle("Безпека")
             PinSection(state.pinEnabled, onSetPin, onChangePin, onDisablePin)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -133,6 +146,32 @@ fun SettingsScreen(
             confirmButton = { TextButton(onClick = onClearAllConfirmed) { Text("Видалити") } },
             dismissButton = { TextButton(onClick = onClearAllDismissed) { Text("Скасувати") } },
         )
+    }
+}
+
+@Composable
+private fun BudgetSection(
+    input: String,
+    error: com.example.expensetracker.domain.money.AmountError?,
+    onInputChange: (String) -> Unit,
+    onSave: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = input,
+            onValueChange = onInputChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Місячний ліміт витрат") },
+            suffix = { Text("₴") },
+            singleLine = true,
+            isError = error != null,
+            supportingText = { Text(error?.message() ?: "Порожнє поле — без ліміту. Залишок рахується за цим лімітом.") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+        )
+        Button(onClick = onSave) { Text("Зберегти бюджет") }
     }
 }
 
@@ -216,7 +255,7 @@ private fun SettingsScreenPreview() {
         SettingsScreen(
             state = SettingsUiState(pinEnabled = true),
             snackbarHostState = remember { SnackbarHostState() },
-            onBack = {}, onSetPin = {}, onChangePin = {}, onDisablePin = {}, onPinDigit = {}, onPinBackspace = {},
+            onBack = {}, onBudgetInputChange = {}, onBudgetSave = {}, onSetPin = {}, onChangePin = {}, onDisablePin = {}, onPinDigit = {}, onPinBackspace = {},
             onPinDialogDismissed = {}, onSeedDemoData = {}, onClearAll = {}, onClearAllConfirmed = {}, onClearAllDismissed = {},
         )
     }

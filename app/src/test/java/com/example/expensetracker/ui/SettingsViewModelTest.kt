@@ -2,6 +2,8 @@ package com.example.expensetracker.ui
 
 import app.cash.turbine.test
 import com.example.expensetracker.data.repository.InMemoryExpenseRepository
+import com.example.expensetracker.data.repository.InMemorySettingsRepository
+import com.example.expensetracker.domain.money.AmountError
 import com.example.expensetracker.domain.security.AppLock
 import com.example.expensetracker.domain.security.InMemorySecureKeyValueStore
 import com.example.expensetracker.domain.security.PinAuthenticator
@@ -33,8 +35,9 @@ class SettingsViewModelTest {
     private val auth = PinAuthenticator(InMemorySecureKeyValueStore(), PinHasher(iterations = 1_000), clock)
     private val appLock by lazy { AppLock(auth, clock) }
     private val repository = InMemoryExpenseRepository()
+    private val settings = InMemorySettingsRepository(budgetLimitMinor = 3_000_050)
     private val viewModel by lazy {
-        SettingsViewModel(auth, appLock, repository, DemoDataSeeder(repository, clock), mainDispatcher.dispatcher)
+        SettingsViewModel(auth, appLock, repository, DemoDataSeeder(repository, clock), settings, mainDispatcher.dispatcher)
     }
 
     private fun type(pin: String) = pin.forEach(viewModel::onPinDigit)
@@ -165,5 +168,65 @@ class SettingsViewModelTest {
         assertNull(viewModel.state.value.pinDialog)
         assertFalse(auth.isPinSet())
         repository.add(expense())
+    }
+
+    // --- Бюджет -----------------------------------------------------------------------------------
+
+    @Test
+    fun `budget field starts with the saved limit`() = runTest {
+        keepCollecting(viewModel.state)
+        assertEquals("30000.50", viewModel.state.value.budgetInput)
+    }
+
+    @Test
+    fun `a valid budget is saved in minor units and confirmed`() = runTest {
+        keepCollecting(viewModel.state)
+        viewModel.events.test {
+            viewModel.onBudgetInputChange("45 000,5")
+            viewModel.onBudgetSave()
+
+            assertEquals(SettingsEvent.Message("Бюджет збережено"), awaitItem())
+            assertEquals(4_500_050L, settings.budgetLimitMinor.first())
+            assertNull(viewModel.state.value.budgetError)
+        }
+    }
+
+    @Test
+    fun `invalid budgets show an error and are not saved`() = runTest {
+        keepCollecting(viewModel.state)
+
+        viewModel.onBudgetInputChange("0")
+        viewModel.onBudgetSave()
+        assertEquals(AmountError.ZERO, viewModel.state.value.budgetError)
+
+        viewModel.onBudgetInputChange("12.345")
+        viewModel.onBudgetSave()
+        assertEquals(AmountError.TOO_MANY_DECIMALS, viewModel.state.value.budgetError)
+
+        // мінус відсікає фільтр введення, тож від’ємний ліміт неможливо ввести взагалі
+        viewModel.onBudgetInputChange("-5")
+        assertEquals("5", viewModel.state.value.budgetInput)
+
+        assertEquals(3_000_050L, settings.budgetLimitMinor.first())
+    }
+
+    @Test
+    fun `typing clears a previous budget error`() = runTest {
+        keepCollecting(viewModel.state)
+        viewModel.onBudgetInputChange("0")
+        viewModel.onBudgetSave()
+        viewModel.onBudgetInputChange("10")
+        assertNull(viewModel.state.value.budgetError)
+    }
+
+    @Test
+    fun `clearing the field removes the limit`() = runTest {
+        keepCollecting(viewModel.state)
+        viewModel.events.test {
+            viewModel.onBudgetInputChange("")
+            viewModel.onBudgetSave()
+            assertEquals(SettingsEvent.Message("Ліміт бюджету прибрано"), awaitItem())
+            assertNull(settings.budgetLimitMinor.first())
+        }
     }
 }

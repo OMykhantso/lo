@@ -38,6 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.expensetracker.domain.model.Category
 import com.example.expensetracker.domain.model.Currency
+import com.example.expensetracker.domain.money.MoneyFormatter
+import com.example.expensetracker.domain.usecase.BudgetImpact
+import com.example.expensetracker.domain.usecase.BudgetStatus
 import com.example.expensetracker.domain.validation.ExpenseValidator
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.example.expensetracker.ui.theme.categoryColors
@@ -133,6 +136,8 @@ fun AddExpenseScreen(
                 }
             }
 
+            state.budgetImpact?.let { BudgetImpactText(it) }
+
             Text("Категорія", style = MaterialTheme.typography.titleSmall)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -190,6 +195,21 @@ fun AddExpenseScreen(
             }
         }
     }
+}
+
+/** Підказка під сумою: що лишиться від бюджету або наскільки його буде перевищено. */
+@Composable
+private fun BudgetImpactText(impact: BudgetImpact) {
+    val remaining = MoneyFormatter.format(impact.remainingAfterMinor, impact.currency)
+    val (text, color) = when (impact.status) {
+        BudgetStatus.EXCEEDED -> {
+            val over = MoneyFormatter.format(-impact.remainingAfterMinor, impact.currency)
+            "Бюджет буде перевищено на $over" to MaterialTheme.colorScheme.error
+        }
+        BudgetStatus.WARNING -> "Бюджет майже вичерпано: після витрати лишиться $remaining" to MaterialTheme.colorScheme.tertiary
+        else -> "Після цієї витрати лишиться $remaining" to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Text(text, color = color, style = MaterialTheme.typography.bodyMedium)
 }
 
 @Preview(showBackground = true)

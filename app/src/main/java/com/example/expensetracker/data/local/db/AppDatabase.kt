@@ -6,12 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ExpenseEntity::class],
+    entities = [ExpenseEntity::class, ExchangeRateEntity::class],
     version = 1,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
+    abstract fun ratesDao(): RatesDao
 
     companion object {
         private const val NAME = "expense_tracker.db"

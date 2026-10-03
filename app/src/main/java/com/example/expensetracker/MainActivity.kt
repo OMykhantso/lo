@@ -45,6 +45,8 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         container.appLock.onForegrounded()
+        // Тихо оновлюємо курси НБУ (не частіше ніж раз на 15 хв); без мережі лишається кеш у БД.
+        container.ratesSync.refresh()
     }
 
     override fun onStop() {

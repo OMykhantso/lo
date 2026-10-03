@@ -1,7 +1,6 @@
 package com.example.expensetracker.ui.overview
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -12,16 +11,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -34,10 +32,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.expensetracker.data.mock.MockExpenses
 import com.example.expensetracker.domain.model.Currency
-import com.example.expensetracker.domain.model.MoneyAmount
-import com.example.expensetracker.domain.money.MoneyFormatter
+import com.example.expensetracker.domain.usecase.BalanceSummary
+import com.example.expensetracker.domain.usecase.BudgetStatus
 import com.example.expensetracker.ui.components.ExpenseListItem
+import com.example.expensetracker.ui.components.RatesInfoText
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
+import com.example.expensetracker.ui.util.LocalClock
+import com.example.expensetracker.ui.util.RatesText
 
 @Composable
 fun OverviewScreenRoot(
@@ -52,6 +53,8 @@ fun OverviewScreenRoot(
         onAddExpense = onAddExpense,
         onOpenHistory = onOpenHistory,
         onOpenSettings = onOpenSettings,
+        onCurrencySelected = viewModel::onCurrencySelected,
+        onRefreshRates = viewModel::onRefreshRates,
     )
 }
 
@@ -62,8 +65,11 @@ fun OverviewScreen(
     onAddExpense: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
+    onCurrencySelected: (Currency) -> Unit,
+    onRefreshRates: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val clock = LocalClock.current
     Scaffold(
         modifier = modifier,
         // Нижні відступи враховує зовнішній Scaffold із панеллю навігації.
@@ -72,6 +78,9 @@ fun OverviewScreen(
             TopAppBar(
                 title = { Text("Огляд") },
                 actions = {
+                    IconButton(onClick = onRefreshRates) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Оновити курси валют")
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = "Налаштування")
                     }
@@ -91,7 +100,19 @@ fun OverviewScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item(key = "month-card") { MonthSpentCard(state.monthSpent) }
+            state.balance?.let { balance ->
+                item(key = "balance") {
+                    BalanceCard(
+                        balance = balance,
+                        requestedCurrency = state.requestedCurrency,
+                        onCurrencySelected = onCurrencySelected,
+                        onSetBudget = onOpenSettings,
+                    )
+                }
+                item(key = "rates") {
+                    RatesInfoText(RatesText.info(state.rates, state.sync, clock))
+                }
+            }
             item(key = "recent-header") {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -116,30 +137,6 @@ fun OverviewScreen(
     }
 }
 
-@Composable
-private fun MonthSpentCard(spent: List<MoneyAmount>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-    ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                "Витрачено цього місяця",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            val amounts = spent.ifEmpty { listOf(MoneyAmount(0, Currency.UAH)) }
-            amounts.forEachIndexed { index, amount ->
-                Text(
-                    text = MoneyFormatter.format(amount.minor, amount.currency),
-                    style = if (index == 0) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-        }
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 private fun OverviewScreenPreview() {
@@ -148,10 +145,12 @@ private fun OverviewScreenPreview() {
         OverviewScreen(
             state = OverviewUiState(
                 isLoading = false,
-                monthSpent = listOf(MoneyAmount(2_345_075, Currency.UAH), MoneyAmount(999, Currency.USD)),
+                balance = BalanceSummary(
+                    Currency.UAH, 2_345_075, 3_000_000, 654_925, 0.78f, BudgetStatus.OK, 0,
+                ),
                 recent = recent,
             ),
-            onAddExpense = {}, onOpenHistory = {}, onOpenSettings = {},
+            onAddExpense = {}, onOpenHistory = {}, onOpenSettings = {}, onCurrencySelected = {}, onRefreshRates = {},
         )
     }
 }

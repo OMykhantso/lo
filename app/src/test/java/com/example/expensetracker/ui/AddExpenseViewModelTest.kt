@@ -6,6 +6,10 @@ import com.example.expensetracker.domain.model.Currency
 import com.example.expensetracker.domain.model.Expense
 import com.example.expensetracker.domain.money.AmountError
 import com.example.expensetracker.domain.repository.ExpenseRepository
+import com.example.expensetracker.domain.usecase.BalanceCalculator
+import com.example.expensetracker.domain.usecase.BalanceState
+import com.example.expensetracker.domain.usecase.BudgetStatus
+import com.example.expensetracker.testutil.FakeRatesRepository.Companion.snapshotOf
 import com.example.expensetracker.domain.validation.CategoryError
 import com.example.expensetracker.testutil.MainDispatcherRule
 import com.example.expensetracker.testutil.TestData
@@ -113,5 +117,55 @@ class AddExpenseViewModelTest {
         viewModel.onAmountChange("1.234")
         assertEquals(AmountError.TOO_MANY_DECIMALS, viewModel.state.value.validation.amountError)
         assertFalse(viewModel.state.value.showErrors)
+    }
+
+    // --- Вплив на бюджет --------------------------------------------------------------------------
+
+    private fun balanceState(spent: Long, budget: Long?): BalanceState {
+        val rates = snapshotOf(Currency.USD to "40")
+        val totals = listOf(com.example.expensetracker.domain.model.CategoryTotal(Category.FOOD, Currency.UAH, spent, 1))
+        return BalanceState(BalanceCalculator.calculate(totals, budget, rates.table, Currency.UAH), Currency.UAH, rates)
+    }
+
+    @Test
+    fun `shows what remains from the budget once a valid amount is typed`() = runTest {
+        val vm = AddExpenseViewModel(repository, TestData.clock, kotlinx.coroutines.flow.flowOf(balanceState(50_000, 100_000)))
+
+        assertNull(vm.state.value.budgetImpact) // сума ще не введена
+        vm.onAmountChange("100")
+
+        val impact = vm.state.value.budgetImpact!!
+        assertEquals(40_000L, impact.remainingAfterMinor)
+        assertEquals(BudgetStatus.OK, impact.status)
+    }
+
+    @Test
+    fun `warns when the new expense would exceed the budget`() = runTest {
+        val vm = AddExpenseViewModel(repository, TestData.clock, kotlinx.coroutines.flow.flowOf(balanceState(90_000, 100_000)))
+        vm.onAmountChange("200")
+        assertEquals(BudgetStatus.EXCEEDED, vm.state.value.budgetImpact!!.status)
+        assertEquals(-10_000L, vm.state.value.budgetImpact!!.remainingAfterMinor)
+    }
+
+    @Test
+    fun `foreign currency is converted for the estimate`() = runTest {
+        val vm = AddExpenseViewModel(repository, TestData.clock, kotlinx.coroutines.flow.flowOf(balanceState(0, 100_000)))
+        vm.onAmountChange("10")
+        vm.onCurrencyChange(Currency.USD) // $10 = 400 грн
+        assertEquals(60_000L, vm.state.value.budgetImpact!!.remainingAfterMinor)
+    }
+
+    @Test
+    fun `no hint without a budget, without a valid amount, or without a rate`() = runTest {
+        val noBudget = AddExpenseViewModel(repository, TestData.clock, kotlinx.coroutines.flow.flowOf(balanceState(0, null)))
+        noBudget.onAmountChange("10")
+        assertNull(noBudget.state.value.budgetImpact)
+
+        val vm = AddExpenseViewModel(repository, TestData.clock, kotlinx.coroutines.flow.flowOf(balanceState(0, 100_000)))
+        vm.onAmountChange("0")
+        assertNull(vm.state.value.budgetImpact)
+        vm.onAmountChange("5")
+        vm.onCurrencyChange(Currency.EUR) // курсу EUR немає
+        assertNull(vm.state.value.budgetImpact)
     }
 }

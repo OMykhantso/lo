@@ -2,12 +2,18 @@ package com.example.expensetracker.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.expensetracker.domain.money.AmountError
+import com.example.expensetracker.domain.money.AmountInput
+import com.example.expensetracker.domain.money.MoneyFormatter
 import com.example.expensetracker.domain.repository.ExpenseRepository
+import com.example.expensetracker.domain.repository.SettingsRepository
 import com.example.expensetracker.domain.security.AppLock
 import com.example.expensetracker.domain.security.PinAuthenticator
 import com.example.expensetracker.domain.security.PinPolicy
 import com.example.expensetracker.domain.security.VerifyResult
 import com.example.expensetracker.domain.usecase.DemoDataSeeder
+import com.example.expensetracker.domain.validation.BudgetValidation
+import com.example.expensetracker.domain.validation.BudgetValidator
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -16,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -42,6 +49,9 @@ data class SettingsUiState(
     val pinEnabled: Boolean = false,
     val pinDialog: PinDialogState? = null,
     val confirmClearAll: Boolean = false,
+    /** Текст поля «Місячний бюджет» (у гривнях). */
+    val budgetInput: String = "",
+    val budgetError: AmountError? = null,
 )
 
 sealed interface SettingsEvent {
@@ -53,6 +63,7 @@ class SettingsViewModel(
     private val appLock: AppLock,
     private val repository: ExpenseRepository,
     private val demoDataSeeder: DemoDataSeeder,
+    private val settings: SettingsRepository,
     private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
@@ -66,6 +77,34 @@ class SettingsViewModel(
 
     private val _events = Channel<SettingsEvent>(Channel.BUFFERED)
     val events: Flow<SettingsEvent> = _events.receiveAsFlow()
+
+    init {
+        // Поле бюджету заповнюється збереженим значенням один раз; далі ним керує користувач.
+        viewModelScope.launch {
+            val saved = settings.budgetLimitMinor.first()
+            local.update { it.copy(budgetInput = saved?.let(MoneyFormatter::formatPlain).orEmpty()) }
+        }
+    }
+
+    // --- Бюджет ----------------------------------------------------------------------------------
+
+    fun onBudgetInputChange(text: String) =
+        local.update { it.copy(budgetInput = AmountInput.sanitize(text), budgetError = null) }
+
+    fun onBudgetSave() {
+        when (val validation = BudgetValidator.validate(local.value.budgetInput)) {
+            is BudgetValidation.Invalid -> local.update { it.copy(budgetError = validation.error) }
+            BudgetValidation.Cleared -> viewModelScope.launch {
+                settings.setBudgetLimit(null)
+                _events.send(SettingsEvent.Message("Ліміт бюджету прибрано"))
+            }
+            is BudgetValidation.Valid -> viewModelScope.launch {
+                settings.setBudgetLimit(validation.limitMinor)
+                local.update { it.copy(budgetInput = MoneyFormatter.formatPlain(validation.limitMinor)) }
+                _events.send(SettingsEvent.Message("Бюджет збережено"))
+            }
+        }
+    }
 
     // --- PIN -------------------------------------------------------------------------------------
 
