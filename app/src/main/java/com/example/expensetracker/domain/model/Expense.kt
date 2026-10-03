@@ -14,4 +14,9 @@ data class Expense(
     val category: Category,
     val timestamp: Long,
     val note: String = "",
-)
+) {
+    init {
+        // Інваріант домену: нульових і від’ємних витрат не існує (повернення коштів — не «витрата»).
+        require(amountMinor > 0) { "Expense amount must be positive, was $amountMinor" }
+    }
+}

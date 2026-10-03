@@ -26,22 +26,30 @@ class ReminderScheduler(
 ) : ReminderController {
     private val workManager: WorkManager = WorkManager.getInstance(context.applicationContext)
 
-    override fun enable() = schedule(ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE)
+    override fun enable() = realign()
 
     override fun disable() {
         workManager.cancelUniqueWork(UNIQUE_NAME)
     }
 
-    override fun ensureScheduled() = schedule(ExistingPeriodicWorkPolicy.KEEP)
+    /** `KEEP`: якщо розклад уже є — не чіпаємо його (інакше кожен запуск застосунку зсував би перше спрацювання). */
+    override fun ensureScheduled() = enqueue()
 
-    override fun realign() = schedule(ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE)
+    /**
+     * Скасовує наявний розклад і створює новий під поточний час/зону. Дві операції WorkManager виконує
+     * послідовно в одному серійному виконавці, тож `KEEP` після скасування бачить, що роботи вже немає.
+     */
+    override fun realign() {
+        workManager.cancelUniqueWork(UNIQUE_NAME)
+        enqueue()
+    }
 
-    private fun schedule(policy: ExistingPeriodicWorkPolicy) {
+    private fun enqueue() {
         val delay = NextReminderTime.delayFrom(ZonedDateTime.now(clock))
         val request = PeriodicWorkRequestBuilder<ReminderWorker>(REPEAT_INTERVAL_HOURS, TimeUnit.HOURS)
             .setInitialDelay(delay.toMillis(), TimeUnit.MILLISECONDS)
             .build()
-        workManager.enqueueUniquePeriodicWork(UNIQUE_NAME, policy, request)
+        workManager.enqueueUniquePeriodicWork(UNIQUE_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
     companion object {

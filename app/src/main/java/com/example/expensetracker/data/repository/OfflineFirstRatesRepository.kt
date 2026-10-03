@@ -3,6 +3,7 @@ package com.example.expensetracker.data.repository
 import com.example.expensetracker.data.remote.RatesFormatException
 import com.example.expensetracker.data.remote.RatesRemoteDataSource
 import com.example.expensetracker.data.remote.RatesServerException
+import com.example.expensetracker.domain.model.Currency
 import com.example.expensetracker.domain.model.ExchangeRate
 import com.example.expensetracker.domain.model.RatesSnapshot
 import com.example.expensetracker.domain.repository.RatesRepository
@@ -40,10 +41,13 @@ class OfflineFirstRatesRepository(
             return RefreshResult.Failure(RefreshFailure.INVALID_DATA)
         }
 
-        if (fetched.isEmpty()) return RefreshResult.Failure(RefreshFailure.INVALID_DATA)
+        // Друга лінія захисту після NbuRateMapper: нульовий/від’ємний курс не має потрапити в кеш
+        // (він «отруїв» би всі перерахунки), навіть якщо джерело помилилось.
+        val usable = fetched.filter { it.currency != Currency.BASE && it.rate.signum() > 0 }
+        if (usable.isEmpty()) return RefreshResult.Failure(RefreshFailure.INVALID_DATA)
 
         val now = clock.millis()
-        local.upsert(fetched.map { ExchangeRate(it.currency, it.rate, it.date, now) })
-        return RefreshResult.Success(fetched.size)
+        local.upsert(usable.map { ExchangeRate(it.currency, it.rate, it.date, now) })
+        return RefreshResult.Success(usable.size)
     }
 }

@@ -2,7 +2,6 @@ package com.example.expensetracker.data.local.db
 
 import com.example.expensetracker.domain.model.Currency
 import com.example.expensetracker.domain.model.ExchangeRate
-import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 

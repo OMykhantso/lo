@@ -7,6 +7,7 @@ import com.example.expensetracker.domain.model.Expense
 
 /** Невідома валюта (дані з іншої версії застосунку) → `null`: показувати суму у хибній валюті гірше, ніж пропустити. */
 internal fun ExpenseEntity.toDomainOrNull(): Expense? {
+    if (amount <= 0) return null // пошкоджений рядок: інваріант домену не дозволяє нульову/від’ємну суму
     val currency = Currency.fromCode(currency) ?: return null
     return Expense(
         id = id,
