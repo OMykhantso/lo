@@ -11,7 +11,17 @@ interface SettingsRepository {
     /** Валюта, у якій показуються баланс і аналітика. */
     val displayCurrency: Flow<Currency>
 
+    /** Чи увімкнено щоденне нагадування о 20:00 (за замовчуванням — так). */
+    val reminderEnabled: Flow<Boolean>
+
+    /** Чи вже показували запит дозволу на сповіщення (щоб не набридати при кожному запуску). */
+    val notificationPromptShown: Flow<Boolean>
+
     suspend fun setBudgetLimit(minorUah: Long?)
 
     suspend fun setDisplayCurrency(currency: Currency)
+
+    suspend fun setReminderEnabled(enabled: Boolean)
+
+    suspend fun setNotificationPromptShown()
 }

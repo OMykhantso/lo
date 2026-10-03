@@ -9,6 +9,8 @@ import com.example.expensetracker.data.repository.OfflineFirstRatesRepository
 import com.example.expensetracker.data.repository.RoomExpenseRepository
 import com.example.expensetracker.data.repository.RoomRatesLocalDataSource
 import com.example.expensetracker.data.secure.EncryptedPrefsKeyValueStore
+import com.example.expensetracker.domain.notifications.ReminderController
+import com.example.expensetracker.notifications.ReminderScheduler
 import com.example.expensetracker.domain.repository.ExpenseRepository
 import com.example.expensetracker.domain.repository.RatesRepository
 import com.example.expensetracker.domain.repository.SettingsRepository
@@ -23,6 +25,8 @@ import java.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Композиційний корінь застосунку: живе стільки ж, скільки процес
@@ -56,6 +60,15 @@ class AppContainer(private val context: Context) : AppDependencies {
 
     override val observeCategoryBreakdown: ObserveCategoryBreakdown by lazy {
         ObserveCategoryBreakdown(expenseRepository, settingsRepository, ratesRepository, clock)
+    }
+
+    override val reminderController: ReminderController by lazy { ReminderScheduler(context, clock) }
+
+    /** На кожному запуску процесу гарантуємо, що щоденне нагадування заплановане (якщо його не вимкнено). */
+    fun scheduleReminderIfEnabled() {
+        appScope.launch {
+            if (settingsRepository.reminderEnabled.first()) reminderController.ensureScheduled()
+        }
     }
 
     // Ініціалізація EncryptedSharedPreferences звертається до Android Keystore, тому вона відкладена до першого PIN-запиту.

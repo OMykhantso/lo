@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Курси валют НБУ (HTTPS). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+: показ сповіщення-нагадування (запитується в рантаймі). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Відновлення розкладу нагадування після перезавантаження пристрою. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".ExpenseTrackerApp"
         android:allowBackup="false"
@@ -19,6 +26,24 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Deep link expensetracker://add — екран додавання витрати (без BROWSABLE: з браузера не відкривається). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="expensetracker" android:host="add" />
+            </intent-filter>
         </activity>
+
+        <!-- Відновлює розклад нагадування після перезавантаження, оновлення застосунку, зміни часу/часової зони. -->
+        <receiver
+            android:name=".notifications.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -41,6 +41,7 @@ object ViewModelFactories {
         initializer {
             SettingsViewModel(
                 deps.pinAuthenticator, deps.appLock, deps.expenseRepository, deps.demoDataSeeder, deps.settingsRepository,
+                deps.reminderController,
             )
         }
     }

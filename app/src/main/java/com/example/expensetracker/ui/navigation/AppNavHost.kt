@@ -27,6 +27,7 @@ import androidx.navigation.toRoute
 import com.example.expensetracker.di.AppDependencies
 import com.example.expensetracker.di.ViewModelFactories
 import com.example.expensetracker.domain.model.Category
+import com.example.expensetracker.domain.notifications.NotificationPermission
 import com.example.expensetracker.ui.add.AddExpenseScreenRoot
 import com.example.expensetracker.ui.add.AddExpenseViewModel
 import com.example.expensetracker.ui.analytics.AnalyticsScreenRoot
@@ -50,6 +51,7 @@ import com.example.expensetracker.ui.util.LocalClock
 @Composable
 fun AppNavHost(
     deps: AppDependencies,
+    notificationPermission: NotificationPermission,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -138,7 +140,11 @@ fun AppNavHost(
                     popExitTransition = { pushPopExit() },
                 ) {
                     val viewModel: SettingsViewModel = viewModel(factory = ViewModelFactories.settings(deps))
-                    SettingsScreenRoot(viewModel = viewModel, onBack = { navController.popBackStack() })
+                    SettingsScreenRoot(
+                        viewModel = viewModel,
+                        notificationPermission = notificationPermission,
+                        onBack = { navController.popBackStack() },
+                    )
                 }
             }
         }

@@ -14,6 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.expensetracker.di.AppDependencies
 import com.example.expensetracker.di.ViewModelFactories
+import com.example.expensetracker.domain.notifications.NotificationPermission
 import com.example.expensetracker.ui.lock.LockScreenRoot
 import com.example.expensetracker.ui.lock.LockViewModel
 import com.example.expensetracker.ui.navigation.AppNavHost
@@ -25,6 +26,7 @@ import com.example.expensetracker.ui.navigation.AppNavHost
 @Composable
 fun AppContent(
     deps: AppDependencies,
+    notificationPermission: NotificationPermission,
     navController: NavHostController,
     modifier: Modifier = Modifier,
 ) {
@@ -36,7 +38,7 @@ fun AppContent(
                 .fillMaxSize()
                 .then(if (locked) Modifier.clearAndSetSemantics { } else Modifier),
         ) {
-            AppNavHost(deps = deps, navController = navController)
+            AppNavHost(deps = deps, notificationPermission = notificationPermission, navController = navController)
         }
         AnimatedVisibility(visible = locked, enter = fadeIn(), exit = fadeOut()) {
             val viewModel: LockViewModel = viewModel(factory = ViewModelFactories.lock(deps))

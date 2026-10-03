@@ -1,5 +1,6 @@
 package com.example.expensetracker.di
 
+import com.example.expensetracker.domain.notifications.ReminderController
 import com.example.expensetracker.domain.repository.ExpenseRepository
 import com.example.expensetracker.domain.repository.RatesRepository
 import com.example.expensetracker.domain.repository.SettingsRepository
@@ -20,6 +21,7 @@ interface AppDependencies {
     val ratesSync: RatesSync
     val observeBalance: ObserveBalance
     val observeCategoryBreakdown: ObserveCategoryBreakdown
+    val reminderController: ReminderController
     val pinAuthenticator: PinAuthenticator
     val appLock: AppLock
     val demoDataSeeder: DemoDataSeeder

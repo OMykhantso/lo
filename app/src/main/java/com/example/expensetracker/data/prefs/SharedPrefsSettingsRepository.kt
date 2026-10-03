@@ -17,9 +17,13 @@ class SharedPrefsSettingsRepository(context: Context) : SettingsRepository {
 
     private val budget = MutableStateFlow(readBudget())
     private val currency = MutableStateFlow(readCurrency())
+    private val reminder = MutableStateFlow(prefs.getBoolean(KEY_REMINDER, true))
+    private val promptShown = MutableStateFlow(prefs.getBoolean(KEY_PROMPT_SHOWN, false))
 
     override val budgetLimitMinor: Flow<Long?> = budget
     override val displayCurrency: Flow<Currency> = currency
+    override val reminderEnabled: Flow<Boolean> = reminder
+    override val notificationPromptShown: Flow<Boolean> = promptShown
 
     override suspend fun setBudgetLimit(minorUah: Long?) {
         prefs.edit().apply {
@@ -33,6 +37,16 @@ class SharedPrefsSettingsRepository(context: Context) : SettingsRepository {
         this.currency.value = currency
     }
 
+    override suspend fun setReminderEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_REMINDER, enabled).apply()
+        reminder.value = enabled
+    }
+
+    override suspend fun setNotificationPromptShown() {
+        prefs.edit().putBoolean(KEY_PROMPT_SHOWN, true).apply()
+        promptShown.value = true
+    }
+
     private fun readBudget(): Long? = if (prefs.contains(KEY_BUDGET)) prefs.getLong(KEY_BUDGET, 0L) else null
 
     private fun readCurrency(): Currency = Currency.fromCode(prefs.getString(KEY_CURRENCY, null)) ?: Currency.UAH
@@ -41,5 +55,7 @@ class SharedPrefsSettingsRepository(context: Context) : SettingsRepository {
         const val FILE_NAME = "settings"
         const val KEY_BUDGET = "budget_limit_minor"
         const val KEY_CURRENCY = "display_currency"
+        const val KEY_REMINDER = "daily_reminder_enabled"
+        const val KEY_PROMPT_SHOWN = "notification_prompt_shown"
     }
 }

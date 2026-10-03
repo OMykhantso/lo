@@ -3,6 +3,7 @@ package com.example.expensetracker.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.domain.money.AmountError
+import com.example.expensetracker.domain.notifications.ReminderController
 import com.example.expensetracker.domain.money.AmountInput
 import com.example.expensetracker.domain.money.MoneyFormatter
 import com.example.expensetracker.domain.repository.ExpenseRepository
@@ -52,6 +53,8 @@ data class SettingsUiState(
     /** Текст поля «Місячний бюджет» (у гривнях). */
     val budgetInput: String = "",
     val budgetError: AmountError? = null,
+    /** Щоденне нагадування о 20:00 увімкнено. */
+    val reminderEnabled: Boolean = true,
 )
 
 sealed interface SettingsEvent {
@@ -64,6 +67,7 @@ class SettingsViewModel(
     private val repository: ExpenseRepository,
     private val demoDataSeeder: DemoDataSeeder,
     private val settings: SettingsRepository,
+    private val reminders: ReminderController,
     private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
@@ -71,8 +75,10 @@ class SettingsViewModel(
     private var entered = ""
     private var firstPin: String? = null
 
-    val state: StateFlow<SettingsUiState> = combine(local, appLock.pinEnabled) { ui, pinEnabled ->
-        ui.copy(pinEnabled = pinEnabled)
+    val state: StateFlow<SettingsUiState> = combine(
+        local, appLock.pinEnabled, settings.reminderEnabled,
+    ) { ui, pinEnabled, reminderEnabled ->
+        ui.copy(pinEnabled = pinEnabled, reminderEnabled = reminderEnabled)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(pinEnabled = appLock.pinEnabled.value))
 
     private val _events = Channel<SettingsEvent>(Channel.BUFFERED)
@@ -83,6 +89,15 @@ class SettingsViewModel(
         viewModelScope.launch {
             val saved = settings.budgetLimitMinor.first()
             local.update { it.copy(budgetInput = saved?.let(MoneyFormatter::formatPlain).orEmpty()) }
+        }
+    }
+
+    // --- Нагадування -----------------------------------------------------------------------------
+
+    fun onReminderToggled(enabled: Boolean) {
+        viewModelScope.launch {
+            settings.setReminderEnabled(enabled)
+            if (enabled) reminders.enable() else reminders.disable()
         }
     }
 

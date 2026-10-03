@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -38,13 +39,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.expensetracker.domain.notifications.NotificationPermission
 import com.example.expensetracker.ui.lock.PinPad
 import com.example.expensetracker.ui.util.message
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
 
 @Composable
-fun SettingsScreenRoot(viewModel: SettingsViewModel, onBack: () -> Unit) {
+fun SettingsScreenRoot(
+    viewModel: SettingsViewModel,
+    notificationPermission: NotificationPermission,
+    onBack: () -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val notificationsGranted by notificationPermission.granted.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -56,7 +63,13 @@ fun SettingsScreenRoot(viewModel: SettingsViewModel, onBack: () -> Unit) {
     SettingsScreen(
         state = state,
         snackbarHostState = snackbarHostState,
+        notificationsGranted = notificationsGranted,
         onBack = onBack,
+        onReminderToggled = { enabled ->
+            viewModel.onReminderToggled(enabled)
+            if (enabled && !notificationsGranted) notificationPermission.request()
+        },
+        onRequestNotifications = notificationPermission::request,
         onBudgetInputChange = viewModel::onBudgetInputChange,
         onBudgetSave = viewModel::onBudgetSave,
         onSetPin = viewModel::onSetPinClicked,
@@ -77,7 +90,10 @@ fun SettingsScreenRoot(viewModel: SettingsViewModel, onBack: () -> Unit) {
 fun SettingsScreen(
     state: SettingsUiState,
     snackbarHostState: SnackbarHostState,
+    notificationsGranted: Boolean,
     onBack: () -> Unit,
+    onReminderToggled: (Boolean) -> Unit,
+    onRequestNotifications: () -> Unit,
     onBudgetInputChange: (String) -> Unit,
     onBudgetSave: () -> Unit,
     onSetPin: () -> Unit,
@@ -115,6 +131,10 @@ fun SettingsScreen(
             BudgetSection(state.budgetInput, state.budgetError, onBudgetInputChange, onBudgetSave)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
+            SectionTitle("Нагадування")
+            ReminderSection(state.reminderEnabled, notificationsGranted, onReminderToggled, onRequestNotifications)
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
             SectionTitle("Безпека")
             PinSection(state.pinEnabled, onSetPin, onChangePin, onDisablePin)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -146,6 +166,34 @@ fun SettingsScreen(
             confirmButton = { TextButton(onClick = onClearAllConfirmed) { Text("Видалити") } },
             dismissButton = { TextButton(onClick = onClearAllDismissed) { Text("Скасувати") } },
         )
+    }
+}
+
+@Composable
+private fun ReminderSection(
+    enabled: Boolean,
+    notificationsGranted: Boolean,
+    onToggled: (Boolean) -> Unit,
+    onRequestNotifications: () -> Unit,
+) {
+    ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        headlineContent = { Text("Щоденне нагадування о 20:00") },
+        supportingContent = { Text("«Не забудьте зафіксувати сьогоднішні витрати!»") },
+        trailingContent = { Switch(checked = enabled, onCheckedChange = onToggled) },
+    )
+    if (enabled && !notificationsGranted) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                "Сповіщення вимкнені в системі — нагадування не буде показано.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+            TextButton(onClick = onRequestNotifications) { Text("Дозволити сповіщення") }
+        }
     }
 }
 
@@ -255,6 +303,7 @@ private fun SettingsScreenPreview() {
         SettingsScreen(
             state = SettingsUiState(pinEnabled = true),
             snackbarHostState = remember { SnackbarHostState() },
+            notificationsGranted = false, onReminderToggled = {}, onRequestNotifications = {},
             onBack = {}, onBudgetInputChange = {}, onBudgetSave = {}, onSetPin = {}, onChangePin = {}, onDisablePin = {}, onPinDigit = {}, onPinBackspace = {},
             onPinDialogDismissed = {}, onSeedDemoData = {}, onClearAll = {}, onClearAllConfirmed = {}, onClearAllDismissed = {},
         )

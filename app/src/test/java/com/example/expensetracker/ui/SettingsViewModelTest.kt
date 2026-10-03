@@ -10,6 +10,7 @@ import com.example.expensetracker.domain.security.PinAuthenticator
 import com.example.expensetracker.domain.security.PinHasher
 import com.example.expensetracker.domain.security.VerifyResult
 import com.example.expensetracker.domain.usecase.DemoDataSeeder
+import com.example.expensetracker.testutil.FakeReminderController
 import com.example.expensetracker.testutil.MainDispatcherRule
 import com.example.expensetracker.testutil.MutableClock
 import com.example.expensetracker.testutil.keepCollecting
@@ -36,8 +37,9 @@ class SettingsViewModelTest {
     private val appLock by lazy { AppLock(auth, clock) }
     private val repository = InMemoryExpenseRepository()
     private val settings = InMemorySettingsRepository(budgetLimitMinor = 3_000_050)
+    private val reminders = FakeReminderController()
     private val viewModel by lazy {
-        SettingsViewModel(auth, appLock, repository, DemoDataSeeder(repository, clock), settings, mainDispatcher.dispatcher)
+        SettingsViewModel(auth, appLock, repository, DemoDataSeeder(repository, clock), settings, reminders, mainDispatcher.dispatcher)
     }
 
     private fun type(pin: String) = pin.forEach(viewModel::onPinDigit)
@@ -228,5 +230,34 @@ class SettingsViewModelTest {
             assertEquals(SettingsEvent.Message("Ліміт бюджету прибрано"), awaitItem())
             assertNull(settings.budgetLimitMinor.first())
         }
+    }
+
+    // --- Нагадування ------------------------------------------------------------------------------
+
+    @Test
+    fun `reminder is on by default`() = runTest {
+        keepCollecting(viewModel.state)
+        assertTrue(viewModel.state.value.reminderEnabled)
+    }
+
+    @Test
+    fun `turning the reminder off cancels the schedule and remembers the choice`() = runTest {
+        keepCollecting(viewModel.state)
+
+        viewModel.onReminderToggled(false)
+
+        assertFalse(viewModel.state.value.reminderEnabled)
+        assertFalse(settings.reminderEnabled.first())
+        assertEquals(listOf("disable"), reminders.calls)
+    }
+
+    @Test
+    fun `turning the reminder back on reschedules from scratch`() = runTest {
+        keepCollecting(viewModel.state)
+        viewModel.onReminderToggled(false)
+        viewModel.onReminderToggled(true)
+
+        assertTrue(viewModel.state.value.reminderEnabled)
+        assertEquals(listOf("disable", "enable"), reminders.calls)
     }
 }
