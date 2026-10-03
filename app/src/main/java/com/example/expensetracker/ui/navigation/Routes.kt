@@ -26,5 +26,9 @@ data object AddExpenseRoute
 @Serializable
 data class ExpenseHistoryRoute(val category: String? = null)
 
+/** Налаштування: PIN-код, демо-дані (далі — бюджет, нагадування). */
+@Serializable
+data object SettingsRoute
+
 /** URI, що відкриває [AddExpenseRoute] (використовує сповіщення-нагадування, Lab 5). */
 const val ADD_EXPENSE_DEEP_LINK = "expensetracker://add"

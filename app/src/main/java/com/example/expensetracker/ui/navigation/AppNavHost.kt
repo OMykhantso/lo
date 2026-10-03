@@ -39,6 +39,8 @@ import com.example.expensetracker.ui.navigation.NavTransitions.pushEnter
 import com.example.expensetracker.ui.navigation.NavTransitions.pushPopExit
 import com.example.expensetracker.ui.overview.OverviewScreenRoot
 import com.example.expensetracker.ui.overview.OverviewViewModel
+import com.example.expensetracker.ui.settings.SettingsScreenRoot
+import com.example.expensetracker.ui.settings.SettingsViewModel
 import com.example.expensetracker.ui.util.LocalClock
 
 /**
@@ -97,6 +99,7 @@ fun AppNavHost(
                         viewModel = viewModel,
                         onAddExpense = { navController.navigate(AddExpenseRoute) },
                         onOpenHistory = { navController.navigate(ExpenseHistoryRoute(category = null)) },
+                        onOpenSettings = { navController.navigate(SettingsRoute) },
                     )
                 }
                 composable<AnalyticsRoute> {
@@ -129,6 +132,13 @@ fun AppNavHost(
                         factory = ViewModelFactories.history(deps, Category.fromKey(route.category)),
                     )
                     HistoryScreenRoot(viewModel = viewModel, onBack = { navController.popBackStack() })
+                }
+                composable<SettingsRoute>(
+                    enterTransition = { pushEnter() },
+                    popExitTransition = { pushPopExit() },
+                ) {
+                    val viewModel: SettingsViewModel = viewModel(factory = ViewModelFactories.settings(deps))
+                    SettingsScreenRoot(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
             }
         }

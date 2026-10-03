@@ -12,11 +12,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Scaffold
@@ -42,9 +44,15 @@ fun OverviewScreenRoot(
     viewModel: OverviewViewModel,
     onAddExpense: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    OverviewScreen(state = state, onAddExpense = onAddExpense, onOpenHistory = onOpenHistory)
+    OverviewScreen(
+        state = state,
+        onAddExpense = onAddExpense,
+        onOpenHistory = onOpenHistory,
+        onOpenSettings = onOpenSettings,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,13 +61,23 @@ fun OverviewScreen(
     state: OverviewUiState,
     onAddExpense: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
         // Нижні відступи враховує зовнішній Scaffold із панеллю навігації.
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal),
-        topBar = { TopAppBar(title = { Text("Огляд") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Огляд") },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Налаштування")
+                    }
+                },
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAddExpense,
@@ -133,7 +151,7 @@ private fun OverviewScreenPreview() {
                 monthSpent = listOf(MoneyAmount(2_345_075, Currency.UAH), MoneyAmount(999, Currency.USD)),
                 recent = recent,
             ),
-            onAddExpense = {}, onOpenHistory = {},
+            onAddExpense = {}, onOpenHistory = {}, onOpenSettings = {},
         )
     }
 }

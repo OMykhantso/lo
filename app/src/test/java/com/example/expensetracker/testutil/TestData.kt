@@ -24,3 +24,17 @@ object TestData {
         id: Long = 0,
     ) = Expense(id, amountMinor, currency, category, timestamp, note)
 }
+
+/** Годинник, який тест може пересувати вперед (для блокувань, пільгових періодів тощо). */
+class MutableClock(
+    private var now: java.time.Instant = TestData.NOW,
+    private val zone: ZoneId = TestData.KYIV,
+) : Clock() {
+    override fun getZone(): ZoneId = zone
+    override fun withZone(zone: ZoneId): Clock = MutableClock(now, zone)
+    override fun instant(): java.time.Instant = now
+
+    fun advance(duration: java.time.Duration) {
+        now = now.plus(duration)
+    }
+}
