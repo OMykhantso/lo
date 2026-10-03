@@ -5,7 +5,7 @@
 баланс із місячним бюджетом, аналітика за категоріями, курси валют НБУ з офлайн-кешем, щоденне нагадування о 20:00,
 PIN-захист і тести.
 
-> **Статус перевірки.** На GitHub Actions (справжній Android-тулчейн: JDK 17, AGP 8.7.3, Gradle 8.10.2)
+> **Статус перевірки.** На GitHub Actions (справжній Android-тулчейн: JDK 17 і 21, AGP 8.7.3, Gradle 8.10.2)
 > зелені `testDebugUnitTest`, `assembleDebug` і `lintDebug`
 > ([запуск №1](https://github.com/OMykhantso/lo/actions/runs/37133131738)): 255 unit-тестів, зібраний debug-APK.
 > **На фізичному пристрої/емуляторі застосунок не запускався** — деталі в розділі
@@ -146,7 +146,12 @@ app/src/main/java/com/example/expensetracker/
 
 ## Запуск
 
-Потрібно: **Android Studio Ladybug (2024.2) або новіша**, JDK 17 (вбудований в Studio), Android SDK 35.
+Потрібно: **Android Studio Ladybug (2024.2) або новіша**, Android SDK 35 і **JDK 17–21 для Gradle**.
+
+> **Якщо Studio пише «Gradle 8.10.2 is incompatible with the Gradle JVM version 25»** — нова Studio за
+> замовчуванням бере JDK 25, а цей Gradle підтримує JDK 8–23. Натисніть **«Use JVM 21»** (або
+> Settings ▸ Build, Execution, Deployment ▸ Build Tools ▸ Gradle ▸ *Gradle JDK* ▸ `jbr-21` / `17`).
+> У терміналі: `JAVA_HOME=<шлях до JDK 17 або 21> ./gradlew assembleDebug`. CI перевіряє обидва — 17 і 21.
 
 ```bash
 ./gradlew assembleDebug          # зібрати APK  → app/build/outputs/apk/debug/
