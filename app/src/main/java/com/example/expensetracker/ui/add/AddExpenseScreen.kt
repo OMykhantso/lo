@@ -45,7 +45,7 @@ import com.example.expensetracker.ui.util.message
 
 /** Stateful-обгортка: підписується на ViewModel і делегує відображення [AddExpenseScreen]. */
 @Composable
-fun AddExpenseRoute(
+fun AddExpenseScreenRoot(
     viewModel: AddExpenseViewModel,
     onSaved: () -> Unit,
     onBack: () -> Unit,
